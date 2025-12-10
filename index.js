@@ -3,13 +3,15 @@ class SimulationMemento {
   n;
   m;
   i;
+  t;
   specimens;
   proximity;
   sick;
-  constructor(n, m, i, specimens, proximity, sick) {
+  constructor(n, m, i, t, specimens, proximity, sick) {
     this.n = n;
     this.m = m;
     this.i = i;
+    this.t = t;
     this.specimens = specimens;
     this.proximity = proximity;
     this.sick = sick;
@@ -168,6 +170,7 @@ class Simulation {
   n;
   m;
   i;
+  t = 0;
   specimens = [];
   proximity = {};
   sick = {};
@@ -191,6 +194,12 @@ class Simulation {
   }
   getI() {
     return this.i;
+  }
+  getT() {
+    return this.t;
+  }
+  setT(t) {
+    this.t = t;
   }
   getSpecimens() {
     return this.specimens;
@@ -276,13 +285,14 @@ class Simulation {
     const specimenCopy = JSON.parse(JSON.stringify(this.specimens));
     const proximityCopy = JSON.parse(JSON.stringify(this.proximity));
     const sickCopy = JSON.parse(JSON.stringify(this.sick));
-    return new SimulationMemento(this.n, this.m, this.i, specimenCopy, proximityCopy, sickCopy);
+    return new SimulationMemento(this.n, this.m, this.i, this.t, specimenCopy, proximityCopy, sickCopy);
   }
   restore(snapshot) {
     console.log(snapshot);
     this.n = snapshot.n;
     this.m = snapshot.m;
     this.i = snapshot.i;
+    this.t = snapshot.t;
     this.specimens = snapshot.specimens;
     this.proximity = JSON.parse(JSON.stringify(snapshot.proximity));
     this.sick = JSON.parse(JSON.stringify(snapshot.sick));
@@ -302,7 +312,7 @@ class SimulationHistory {
     return this.history[index];
   }
   getLength() {
-    return this.history.length - 1;
+    return this.history.length;
   }
   toJSON() {
     return JSON.stringify(this.history, null, 2);
@@ -315,7 +325,7 @@ class SimulationHistory {
         specimen.fromJSON(spec.x, spec.y, spec.vector.angle, spec.vector.length, spec.state.name);
         return specimen;
       });
-      return new SimulationMemento(x.n, x.m, x.i, specimens, x.proximity, x.sick);
+      return new SimulationMemento(x.n, x.m, x.i, x.t, specimens, x.proximity, x.sick);
     });
   }
 }
@@ -331,7 +341,6 @@ function start() {
   canvas.width = simulation.getN() / simulation.getM() * 1000;
   let fromLastUpdate = 0;
   let fromLastSpawned = 0;
-  let t = 0;
   isRunning = true;
   interval = setInterval(() => {
     if (!isRunning && fromLastUpdate >= 1000) {
@@ -339,10 +348,10 @@ function start() {
     }
     simulation.step(intervalDelta);
     draw(simulation.getSpecimens(), simulation.getN(), simulation.getM());
-    infoText(simulation.getSpecimens(), t);
+    infoText(simulation.getSpecimens(), simulation.getT());
     if (fromLastUpdate >= 1000) {
       fromLastUpdate -= 1000;
-      t++;
+      simulation.setT(simulation.getT() + 1);
       history.add(simulation.snapshot());
     }
     if (fromLastSpawned >= 5 * simulation.getI()) {
@@ -450,13 +459,13 @@ document.getElementById("load-button").onclick = () => {
       return;
     }
     history.fromJSON(json);
-    const input = prompt(`Select the time to load from 0 to ${history.getLength()}`, `${history.getLength()}`);
+    const input = prompt(`Select the time to load from 1 to ${history.getLength()}`, `${history.getLength()}`);
     if (!input) {
       alert("Could not load history.");
       return;
     }
-    const index = parseInt(input, 10);
-    if (index < 0 || index > history.getLength()) {
+    const index = parseInt(input, 10) - 1;
+    if (index < 0 || index >= history.getLength()) {
       alert("Could not load history. Invalid input.");
       return;
     }

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 03</title>
+  <style>
+    body {
+      background-color: #2E3440;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      border: 1px solid #88C0D0;
+      height: 80vh;
+    }
+
+    .buttons {
+      margin-top: 25px;
+    }
+
+    #info {
+      margin: 10px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <p id="info">Symulacja</p>
+  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div class="buttons">
+    <button id="start-button">START</button>
+    <button id="stop-button">STOP</button>
+  </div>
+    <div class="buttons">
+    <button id="save-button">SAVE</button>
+    <button id="load-button">LOAD</button>
+    <button id="settings-button">settings</button>
+  </div>
+  <script src="./index.js" type="module"></script>
+</body>
+</html>

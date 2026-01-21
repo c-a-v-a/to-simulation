@@ -332,7 +332,7 @@ function start() {
   canvas.width = Constants.CANVAS_SIZE;
   isRunning = true;
   interval = setInterval(() => {
-    if (elapsed >= 1000) {
+    if (elapsed >= 5000) {
       if (Math.random() > 0.25 && isRunning) {
         const request = iterator.next();
         skkm.onNewRequest(request);

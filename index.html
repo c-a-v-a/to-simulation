@@ -28,15 +28,41 @@
       margin: 10px;
       color: white;
     }
+
+    #container {
+      height: 85vh;
+      width: 100%;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    #display {
+      height: 80vh;
+      width: 500px;
+      border: 1px solid white;
+      padding: 10px;
+      overflow-y: scroll;
+    }
+
+    p {
+      color: white;
+    }
   </style>
 </head>
 <body>
   <p id="info">Symulacja</p>
-  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <div id="container">
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+    <div id="display">
+    </div>
+  </div>
   <div class="buttons">
+    <button id="next-button">NEXT DAY</button>
     <button id="start-button">START</button>
     <button id="stop-button">STOP</button>
   </div>
-  <script src="./index.js" type="module"></script>
+  <script src="/public/index.js" type="module"></script>
 </body>
 </html>

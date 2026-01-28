@@ -1,37 +1,10 @@
-// src/Constants.ts
-class Constants {
-  static MIN_X = 49.95855025648944;
-  static MAX_X = 50.154564013341734;
-  static MIN_Y = 19.688292482742394;
-  static MAX_Y = 20.02470275868903;
-  static LOCAL_DANGER_CHANCE = 0.7;
-  static FIRE_CHANCE = 0.3;
-  static FALSE_ALARM_CHANCE = 0.05;
-  static TRUCK_COUNT = 5;
-  static CANVAS_SIZE = 1000;
-}
-
-// src/RequestState.ts
-var RequestState;
-((RequestState2) => {
-  RequestState2[RequestState2["Fire"] = 0] = "Fire";
-  RequestState2[RequestState2["LocalDanger"] = 1] = "LocalDanger";
-})(RequestState ||= {});
-var RequestState_default = RequestState;
-
-// src/Request.ts
-class Request {
+// src/coordinates/Coordinates.ts
+class Coordinates {
   x;
   y;
-  state;
-  constructor(x, y) {
-    if (Math.random() <= Constants.LOCAL_DANGER_CHANCE) {
-      this.state = RequestState_default.LocalDanger;
-    } else {
-      this.state = RequestState_default.Fire;
-    }
-    this.x = x;
-    this.y = y;
+  constructor(maxX, maxY) {
+    this.x = Math.random() * maxX;
+    this.y = Math.random() * maxY;
   }
   getX() {
     return this.x;
@@ -39,367 +12,424 @@ class Request {
   getY() {
     return this.y;
   }
-  getState() {
-    return this.state;
-  }
-  getStateString() {
-    return this.state === RequestState_default.LocalDanger ? "LD" : "F";
-  }
 }
 
-// src/RequestIterator.ts
-class RequestIterator {
-  next() {
-    return new Request(Math.random() * (Constants.MAX_X - Constants.MIN_X) + Constants.MIN_X, Math.random() * (Constants.MAX_Y - Constants.MIN_Y) + Constants.MIN_Y);
-  }
-}
-
-// src/Requests.ts
-class Requests {
-  getIterator() {
-    return new RequestIterator;
-  }
-}
-
-// src/StrategyFire.ts
-class StrategyFire {
-  trucksNeeded = 3;
-  async execute(responses, request, units) {
-    const sortedResponses = responses.sort((a, b) => a.getDistance() - b.getDistance());
-    const selectedTrucks = this.selectTrucks(sortedResponses);
-    const trucksString = this.getTrucksString(selectedTrucks);
-    if (selectedTrucks.length < this.trucksNeeded) {
-      return false;
-    }
-    for (const truck of selectedTrucks) {
-      units.find((unit) => truck.getName().startsWith(unit.getName()))?.addRequest(request);
-      truck.rollOut();
-    }
-    console.log(`TRUCKS ${trucksString} ROLL OUT`);
-    await new Promise((r) => setTimeout(r, Math.random() * 3000));
-    console.log(`TRUCKS ${trucksString} ARRIVED`);
-    if (Math.random() <= Constants.FALSE_ALARM_CHANCE) {
-      console.log("FALSE ALARM");
-    } else {
-      await new Promise((r) => setTimeout(r, Math.random() * (25000 - 5000) + 5000));
-      console.log("MISSION DONE");
-    }
-    await new Promise((r) => setTimeout(r, Math.random() * 3000));
-    for (const truck of selectedTrucks) {
-      truck.goBack();
-    }
-    for (const unit of units) {
-      if (unit.getRequests().includes(request)) {
-        unit.getRequests().splice(unit.getRequests().indexOf(request), 1);
-      }
-    }
-    console.log(`TRUCKS ${trucksString} WENT BACK`);
+// src/coordinates/CoordinatesIterator.ts
+class CoordinatesIterator {
+  maxX = 1000;
+  maxY = 1000;
+  hasNext() {
     return true;
   }
-  selectTrucks(responses) {
-    const selectedTrucks = [];
-    for (const response of responses) {
-      for (const truck of response.getAvailableTrucks()) {
-        selectedTrucks.push(truck);
-        if (selectedTrucks.length >= this.trucksNeeded) {
-          return selectedTrucks;
-        }
-      }
-    }
-    return selectedTrucks;
-  }
-  getTrucksString(trucks) {
-    const names = trucks.map((truck) => truck.getName());
-    const str = names.join(" ");
-    return `[${str}]`;
+  getNext() {
+    return new Coordinates(this.maxX, this.maxY);
   }
 }
 
-// src/StrategyLocalDanger.ts
-class StrategyLocalDanger {
-  trucksNeeded = 2;
-  async execute(responses, request, units) {
-    const sortedResponses = responses.sort((a, b) => a.getDistance() - b.getDistance());
-    const selectedTrucks = this.selectTrucks(sortedResponses);
-    const trucksString = this.getTrucksString(selectedTrucks);
-    if (selectedTrucks.length < this.trucksNeeded) {
-      return false;
+// src/coordinates/CoordinatesCollections.ts
+class CoordinatesCollection {
+  static instance;
+  constructor() {}
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new CoordinatesCollection;
     }
-    for (const truck of selectedTrucks) {
-      units.find((unit) => truck.getName().startsWith(unit.getName()))?.addRequest(request);
-      truck.rollOut();
-    }
-    console.log(`TRUCKS ${trucksString} ROLL OUT`);
-    await new Promise((r) => setTimeout(r, Math.random() * 3000));
-    console.log(`TRUCKS ${trucksString} ARRIVED`);
-    if (Math.random() <= Constants.FALSE_ALARM_CHANCE) {
-      console.log("FALSE ALARM");
-    } else {
-      await new Promise((r) => setTimeout(r, Math.random() * (25000 - 5000) + 5000));
-      console.log("MISSION DONE");
-    }
-    await new Promise((r) => setTimeout(r, Math.random() * 3000));
-    for (const truck of selectedTrucks) {
-      truck.goBack();
-    }
-    for (const unit of units) {
-      if (unit.getRequests().includes(request)) {
-        unit.getRequests().splice(unit.getRequests().indexOf(request), 1);
-      }
-    }
-    console.log(`TRUCKS ${trucksString} WENT BACK`);
-    return true;
+    return this.instance;
   }
-  selectTrucks(responses) {
-    const selectedTrucks = [];
-    for (const response of responses) {
-      for (const truck of response.getAvailableTrucks()) {
-        selectedTrucks.push(truck);
-        if (selectedTrucks.length >= this.trucksNeeded) {
-          return selectedTrucks;
-        }
-      }
-    }
-    return selectedTrucks;
-  }
-  getTrucksString(trucks) {
-    const names = trucks.map((truck) => truck.getName());
-    const str = names.join(" ");
-    return `[${str}]`;
+  createIterator() {
+    return new CoordinatesIterator;
   }
 }
 
-// src/TruckStateAvailable.ts
-class TruckStateAvailable {
-  isAvailable() {
-    return true;
+// src/DeliveryContract.ts
+class DeliveryContract {
+  from;
+  amount;
+  time;
+  constructor(from, amount, time) {
+    this.from = from;
+    this.amount = amount;
+    this.time = time;
+  }
+  getFrom() {
+    return this.from;
+  }
+  getAmount() {
+    return this.amount;
+  }
+  getTime() {
+    return this.time;
+  }
+  tick() {
+    this.time--;
   }
 }
 
-// src/TruckStateGone.ts
-class TruckStateGone {
-  isAvailable() {
-    return false;
+// src/producers/strategies/ProducerStrategyOptimal.ts
+class ProducerStrategyOptimal {
+  adjustProduction(current) {
+    return current;
   }
 }
 
-// src/Truck.ts
-class Truck {
-  name;
-  state;
-  constructor(name) {
-    this.name = name;
-    this.state = new TruckStateAvailable;
-  }
-  getName() {
-    return this.name;
-  }
-  isAvailable() {
-    return this.state.isAvailable();
-  }
-  rollOut() {
-    this.state = new TruckStateGone;
-  }
-  goBack() {
-    this.state = new TruckStateAvailable;
-  }
-}
-
-// src/UnitResponse.ts
-class UnitResponse {
-  distance;
-  availableTrucks;
-  constructor(distance, trucks) {
-    this.distance = distance;
-    this.availableTrucks = trucks.filter((truck) => truck.isAvailable());
-  }
-  getDistance() {
-    return this.distance;
-  }
-  getAvailableTrucks() {
-    return this.availableTrucks;
-  }
-}
-
-// src/Unit.ts
-class Unit {
-  name;
-  requests = [];
-  trucks;
+// src/producers/Producer.ts
+class Producer {
   x;
   y;
-  constructor(name, x, y, trucksCount) {
-    this.name = name;
-    this.x = x;
-    this.y = y;
-    this.trucks = [];
-    for (let i = 0;i < trucksCount; i++)
-      this.trucks.push(new Truck(`${this.name}-${i}`));
-  }
-  getName() {
-    return this.name;
-  }
-  update(request) {
-    return new UnitResponse(this.calculateDistance(request), this.trucks);
-  }
-  calculateDistance(request) {
-    return Math.sqrt((this.x - request.getX()) ** 2 + (this.y - request.getY()) ** 2);
-  }
-  addRequest(request) {
-    if (!this.requests.includes(request)) {
-      this.requests.push(request);
-    }
-  }
-  removeRequest(request) {
-    if (this.requests.includes(request)) {
-      this.requests.splice(this.requests.indexOf(request), 1);
-    }
-  }
-  getRequests() {
-    return this.requests;
-  }
-  getX() {
-    return this.x;
-  }
-  getY() {
-    return this.y;
-  }
-  getLabel() {
-    const availableTrucks = this.trucks.filter((truck) => truck.isAvailable());
-    return `${this.name} [${availableTrucks.length}/${this.trucks.length}]`;
-  }
-}
-
-// src/SKKM.ts
-class SKKM {
+  productionRate;
+  stockpile;
   strategy;
-  units = [];
-  requestQueue = [];
-  constructor() {
-    this.addObserver(new Unit("JRG-1", 50.06005228623131, 19.943127236434425, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-2", 50.033537528025185, 19.935837168700054, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-3", 50.07588593762735, 19.887345955209387, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-4", 50.03782642661006, 20.005766197535944, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-5", 50.092018031278926, 19.920027697538377, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-6", 50.0160573055595, 20.015639068699144, Constants.TRUCK_COUNT));
-    this.addObserver(new Unit("JRG-7", 50.09422957989656, 19.977393811030918, Constants.TRUCK_COUNT));
+  name;
+  closed;
+  maxRate = 25;
+  minRate = 10;
+  constructor(x, y, name) {
+    this.x = x;
+    this.y = y;
+    this.productionRate = Math.floor(Math.random() * (this.maxRate - this.minRate) + this.minRate);
+    this.stockpile = 0;
+    this.strategy = new ProducerStrategyOptimal;
+    this.name = name;
+    this.closed = false;
+  }
+  getX() {
+    return this.x;
+  }
+  getY() {
+    return this.y;
+  }
+  getStockpile() {
+    return this.stockpile;
+  }
+  getProductionRate() {
+    return this.productionRate;
+  }
+  getName() {
+    return this.name;
+  }
+  isClosed() {
+    return this.closed;
   }
   setStrategy(strategy) {
     this.strategy = strategy;
   }
-  addObserver(unit) {
-    this.units.push(unit);
+}
+
+// src/producers/strategies/ProducerStateOverproducing.ts
+class ProducerStrategyOverproducing {
+  adjustProduction(current) {
+    return current - Math.floor((Math.random() * 0.1 + 0.1) * current);
   }
-  notifyAll(request) {
-    return this.units.map((unit) => unit.update(request));
+}
+
+// src/producers/strategies/ProducerStateUnderproducing.ts
+class ProducerStrategyUnderproducing {
+  adjustProduction(current) {
+    return Math.floor(current + (Math.random() * 0.1 + 0.1) * current);
   }
-  async onNewRequest(request) {
-    console.log(`NEW REQUEST [${request.getStateString()}] AT ${request.getX()}, ${request.getY()}`);
-    this.requestQueue.push(request);
-    if (request.getState() === RequestState_default.LocalDanger) {
-      this.setStrategy(new StrategyLocalDanger);
+}
+
+// src/producers/ProducerB.ts
+class ProducerB extends Producer {
+  constructor(x, y, name) {
+    super(x, y, name);
+    this.productionRate = Math.floor(this.productionRate);
+  }
+  produce() {
+    this.stockpile = Math.min(this.stockpile + this.productionRate, 6 * this.productionRate);
+  }
+  weeklyUpdate() {
+    if (this.stockpile > 2 * this.productionRate) {
+      this.setStrategy(new ProducerStrategyOverproducing);
+    } else if (this.stockpile < 0.5 * this.productionRate) {
+      this.setStrategy(new ProducerStrategyUnderproducing);
     } else {
-      this.setStrategy(new StrategyFire);
+      this.setStrategy(new ProducerStrategyOptimal);
     }
-    const current = this.requestQueue.shift();
-    const result = await this.strategy?.execute(this.notifyAll(current), current, this.units);
-    if (!result) {
-      this.requestQueue.push(current);
+    this.productionRate = this.strategy.adjustProduction(this.productionRate);
+    if (this.productionRate > this.maxRate) {
+      this.productionRate = this.maxRate;
+    }
+    if (this.productionRate < this.minRate || this.stockpile >= 6 * this.productionRate) {
+      this.closed = true;
     }
   }
-  getUnits() {
-    return this.units;
+  deliver(amount, time) {
+    this.stockpile -= amount;
+    return new DeliveryContract(this, amount, time);
   }
-  getRequestQueue() {
-    return this.requestQueue;
+}
+
+// src/producers/creators/CreatorProducerB.ts
+class CreatorProducerB {
+  create(name) {
+    const collection = CoordinatesCollection.getInstance();
+    const coordinates = collection.createIterator().getNext();
+    return new ProducerB(coordinates.getX(), coordinates.getY(), name);
+  }
+}
+
+// src/producers/ProducerA.ts
+class ProducerA extends Producer {
+  subProducerCreator;
+  subProducers;
+  resourceBStockpile;
+  resourceBBottlenecks;
+  subProducerTracker = 3;
+  contracts;
+  constructor(x, y, name) {
+    super(x, y, name);
+    this.minRate = 25;
+    this.maxRate = 100;
+    this.productionRate = Math.floor(Math.random() * (this.maxRate - this.minRate) + this.minRate);
+    this.resourceBBottlenecks = 0;
+    this.resourceBStockpile = 0;
+    this.subProducers = [];
+    this.subProducerCreator = new CreatorProducerB;
+    this.subProducers.push(this.subProducerCreator.create("PB-1"));
+    this.subProducers.push(this.subProducerCreator.create("PB-2"));
+    this.subProducers.push(this.subProducerCreator.create("PB-3"));
+    this.contracts = [];
+  }
+  produce() {
+    this.notifyAll();
+    const sorted = this.subProducers.filter((producer) => !producer.isClosed()).sort((a, b) => {
+      return b.getProductionRate() - a.getProductionRate() || this.getTime(a) - this.getTime(b);
+    });
+    this.recieveContracts();
+    this.makeContracts(sorted);
+    if (this.resourceBStockpile < this.productionRate) {
+      this.resourceBBottlenecks++;
+      this.stockpile += this.resourceBStockpile;
+      this.resourceBStockpile = 0;
+    } else {
+      this.stockpile += this.productionRate;
+      this.resourceBStockpile -= this.productionRate;
+    }
+  }
+  weeklyUpdate() {
+    this.subProducers = this.subProducers.filter((producer) => !producer.isClosed());
+    this.productionRate = this.strategy.adjustProduction(this.productionRate);
+    if (this.resourceBBottlenecks > 0 && this.strategy instanceof ProducerStrategyUnderproducing) {
+      this.subProducerTracker++;
+      this.subProducers.push(this.subProducerCreator.create(`PB-${this.subProducerTracker}`));
+    }
+    for (const p of this.subProducers) {
+      p.weeklyUpdate();
+    }
+    this.resourceBBottlenecks = 0;
+  }
+  notifyAll() {
+    for (const p of this.subProducers) {
+      p.produce();
+    }
+    for (const c of this.contracts) {
+      c.tick();
+    }
+  }
+  makeContracts(producers) {
+    let goal = Math.floor(1.1 * this.productionRate);
+    for (const producer of producers) {
+      const amount = Math.min(goal, producer.getStockpile());
+      this.contracts.push(producer.deliver(amount, this.getTime(producer)));
+      goal -= amount;
+      if (goal <= 0) {
+        break;
+      }
+    }
+  }
+  recieveContracts() {
+    for (const contract of this.contracts) {
+      if (contract.getTime() <= 0) {
+        this.resourceBStockpile += contract.getAmount();
+      }
+    }
+    this.contracts = this.contracts.filter((contract) => contract.getTime() > 0);
+  }
+  getTime(to) {
+    const distance = Math.sqrt((this.x - to.getX()) ** 2 + (this.y - to.getY()) ** 2);
+    return Math.floor(distance / 100) + 1;
+  }
+  deliver(amount) {
+    this.stockpile -= amount;
+    return amount;
+  }
+  getSubproducers() {
+    return this.subProducers;
+  }
+  getContracts() {
+    return this.contracts;
+  }
+  getStockpileB() {
+    return this.resourceBStockpile;
+  }
+}
+
+// src/Consumer.ts
+class Consumer {
+  static instance;
+  producer;
+  weeklyQuota;
+  deliveredProducts;
+  wasMet;
+  constructor() {
+    this.producer = new ProducerA(500, 500, "PA-1");
+    this.weeklyQuota = Math.floor(Math.random() * (100 - 25) + 25) * 7;
+    this.deliveredProducts = 0;
+    this.wasMet = false;
+  }
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new Consumer;
+    }
+    return this.instance;
+  }
+  dialyUpdate() {
+    this.producer.produce();
+  }
+  weeklyUpdate() {
+    this.deliveredProducts = this.producer.deliver(Math.min(this.weeklyQuota, this.producer.getStockpile()));
+    if (this.deliveredProducts < this.weeklyQuota) {
+      this.producer.setStrategy(new ProducerStrategyUnderproducing);
+      this.wasMet = false;
+    } else if (this.producer.getStockpile() > 0.2 * this.weeklyQuota) {
+      this.producer.setStrategy(new ProducerStrategyOverproducing);
+      this.wasMet = true;
+    } else {
+      this.producer.setStrategy(new ProducerStrategyOptimal);
+      this.wasMet = true;
+    }
+    this.producer.weeklyUpdate();
+    if (Math.random() > 0.5) {
+      this.weeklyQuota = Math.floor(this.weeklyQuota + this.weeklyQuota * (Math.random() * 0.2 - 0.1));
+    }
+    this.deliveredProducts = 0;
+  }
+  getProducer() {
+    return this.producer;
+  }
+  getQuota() {
+    return this.weeklyQuota;
+  }
+  getWasMet() {
+    return this.wasMet;
   }
 }
 
 // src/index.ts
-var requests = new Requests;
-var intervalDelta = 1000 / 25;
-var skkm = new SKKM;
+var dayCounter = 0;
 var isRunning = false;
 var interval = null;
-function start() {
-  if (interval !== null) {
-    isRunning = true;
-    return;
-  }
-  const iterator = requests.getIterator();
-  const canvas = document.getElementById("canvas");
-  let elapsed = 0;
-  canvas.width = Constants.CANVAS_SIZE;
-  isRunning = true;
-  interval = setInterval(() => {
-    if (elapsed >= 5000) {
-      if (Math.random() > 0.25 && isRunning) {
-        const request = iterator.next();
-        skkm.onNewRequest(request);
-      }
-      elapsed = 0;
-    }
-    draw();
-    elapsed += intervalDelta;
-  }, intervalDelta);
-}
-function stop() {
-  if (interval === null) {
-    return;
-  }
-  isRunning = false;
-}
+var consumer = Consumer.getInstance();
+var canvas = document.getElementById("canvas");
+var nextButton = document.getElementById("next-button");
+var startButton = document.getElementById("start-button");
+var stopButton = document.getElementById("stop-button");
+var dispaly = document.getElementById("display");
 function draw() {
-  const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const request of skkm.getRequestQueue()) {
-    const coordinates = toCoords(request.getX(), request.getY());
+  const producerA = consumer.getProducer();
+  ctx.strokeStyle = "lightgray";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 100, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 200, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 300, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 400, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 500, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 600, 0, Math.PI * 2);
+  ctx.stroke();
+  for (const p of producerA.getSubproducers()) {
     ctx.beginPath();
-    ctx.arc(coordinates[0], coordinates[1], 10, 0, Math.PI * 2);
-    if (request.getState() === RequestState_default.LocalDanger) {
-      ctx.fillStyle = "orange";
-    } else {
-      ctx.fillStyle = "red";
-    }
-    ctx.fill();
-  }
-  for (const unit of skkm.getUnits()) {
-    const unitCoordinates = toCoords(unit.getX(), unit.getY());
-    for (const request of unit.getRequests()) {
-      const coordinates = toCoords(request.getX(), request.getY());
-      ctx.beginPath();
-      ctx.arc(coordinates[0], coordinates[1], 10, 0, Math.PI * 2);
-      if (request.getState() === RequestState_default.LocalDanger) {
-        ctx.fillStyle = "orange";
-      } else {
-        ctx.fillStyle = "red";
-      }
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(unitCoordinates[0], unitCoordinates[1]);
-      ctx.lineTo(coordinates[0], coordinates[1]);
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.arc(unitCoordinates[0], unitCoordinates[1], 10, 0, Math.PI * 2);
-    ctx.fillStyle = "black";
+    ctx.arc(p.getX(), p.getY(), 10, 0, Math.PI * 2);
+    ctx.fillStyle = "cyan";
     ctx.fill();
     ctx.fillStyle = "white";
     ctx.font = "15px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(unit.getLabel(), unitCoordinates[0], unitCoordinates[1] + 15);
+    ctx.fillText(p.getName(), p.getX(), p.getY() + 20);
+  }
+  for (const c of producerA.getContracts()) {
+    ctx.beginPath();
+    ctx.moveTo(producerA.getX(), producerA.getY());
+    ctx.lineTo(c.getFrom().getX(), c.getFrom().getY());
+    ctx.strokeStyle = "cyan";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(producerA.getX(), producerA.getY(), 15, 0, Math.PI * 2);
+  ctx.fillStyle = "green";
+  ctx.fill();
+  ctx.fillStyle = "white";
+  ctx.font = "15px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(producerA.getName(), producerA.getX(), producerA.getY() + 20);
+}
+function displayInfo() {
+  dispaly.innerHTML = "";
+  dispaly.innerHTML += `
+    <p> DAY: ${dayCounter} </p>
+    <hr>
+    <p>WEEKLY QUOTA: ${consumer.getQuota()}, LAST ${consumer.getWasMet() ? "WAS" : "WAS NOT"} MET</p>
+    <hr>
+    <p>${consumer.getProducer().getName()} Production: ${consumer.getProducer().getProductionRate()}/d</p>
+    <p>${consumer.getProducer().getName()} Stockpile A: ${consumer.getProducer().getStockpile()}</p>
+    <p>${consumer.getProducer().getName()} Stockpile B: ${consumer.getProducer().getStockpileB()}</p>
+    <hr>
+  `;
+  for (const p of consumer.getProducer().getSubproducers()) {
+    dispaly.innerHTML += `
+      <p>${p.getName()} Production: ${p.getProductionRate()}/d</p>
+      <p>${p.getName()} Stockpile: ${p.getStockpile()}</p>
+      <hr>
+    `;
+  }
+  for (const c of consumer.getProducer().getContracts()) {
+    dispaly.innerHTML += `
+      <p>CONTRACT: ${c.getFrom().getName()}, FOR: ${c.getAmount()}, IN: ${c.getTime()} days</p>
+    `;
   }
 }
-function toCoords(x, y) {
-  return [
-    (x - Constants.MIN_X) / (Constants.MAX_X - Constants.MIN_X) * Constants.CANVAS_SIZE,
-    (y - Constants.MIN_Y) / (Constants.MAX_Y - Constants.MIN_Y) * Constants.CANVAS_SIZE
-  ];
+function nextDay() {
+  dayCounter++;
+  consumer.dialyUpdate();
+  if (dayCounter % 7 === 0) {
+    consumer.weeklyUpdate();
+  }
+  draw();
+  displayInfo();
 }
+nextButton.onclick = () => {
+  if (!isRunning) {
+    nextDay();
+  }
+};
+startButton.onclick = () => {
+  if (!isRunning) {
+    isRunning = true;
+    interval = setInterval(() => {
+      if (isRunning) {
+        nextDay();
+      }
+    }, 1000);
+  }
+};
+stopButton.onclick = () => {
+  isRunning = false;
+  clearInterval(interval);
+};
 draw();
-document.getElementById("start-button").onclick = () => start();
-document.getElementById("stop-button").onclick = () => stop();
